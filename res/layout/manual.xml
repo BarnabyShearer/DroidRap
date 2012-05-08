@@ -163,4 +163,13 @@
         android:layout_toLeftOf="@+id/print"
         android:text="0" />
 
+    <Button
+        android:id="@+id/slice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/bufferlen"
+        android:layout_alignBottom="@+id/bufferlen"
+        android:layout_toLeftOf="@+id/bufferlen"
+        android:text="Slice" />
+
 </RelativeLayout>

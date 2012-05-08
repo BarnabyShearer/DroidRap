@@ -31,10 +31,8 @@ import java.util.List;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.DialogInterface.OnClickListener;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.view.Menu;
@@ -97,11 +95,6 @@ public abstract class SerialPortActivity extends Activity {
 		AlertDialog.Builder b = new AlertDialog.Builder(this);
 		b.setTitle("Error");
 		b.setMessage(resourceId);
-		b.setPositiveButton("OK", new OnClickListener() {
-			public void onClick(DialogInterface dialog, int which) {
-				SerialPortActivity.this.finish();
-			}
-		});
 		b.show();
 	}
 
@@ -131,10 +124,11 @@ public abstract class SerialPortActivity extends Activity {
 
 		} catch (SecurityException e) {
 			DisplayError(R.string.error_security);
-			startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
+			//startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
 		} catch (IOException e) {
+			
 			DisplayError(R.string.error_unknown);
-			startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
+			//startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
 		} catch (InvalidParameterException e) {
 			DisplayError(R.string.error_configuration);
 			startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
@@ -164,7 +158,8 @@ public abstract class SerialPortActivity extends Activity {
 	protected void onDestroy() {
 		if (mReadThread != null)
 			mReadThread.interrupt();
-		mSerialPort.close();
+		if (mSerialPort != null)
+			mSerialPort.close();
 		mSerialPort = null;
 		super.onDestroy();
 	}
