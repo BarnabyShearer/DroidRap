@@ -4,10 +4,10 @@
 
 Minimal G-Code host for rooted Androids.
 
+Download_.
+
 ::
 
 	git clone https://Zi.iS/c/DroidRap
 
-::
-
-	https://Zi.iS/DroidRap.apk
+.. _Download: https://Zi.iS/DroidRap.apk
