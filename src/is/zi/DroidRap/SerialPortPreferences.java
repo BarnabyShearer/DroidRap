@@ -16,6 +16,11 @@
 
 package is.zi.DroidRap;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
@@ -37,10 +42,19 @@ public class SerialPortPreferences extends PreferenceActivity {
 
 		// Devices
 		final ListPreference devices = (ListPreference)findPreference("DEVICE");
-        String[] entries = mSerialPortFinder.getAllDevices();
-        String[] entryValues = mSerialPortFinder.getAllDevicesPath();
-		devices.setEntries(entries);
-		devices.setEntryValues(entryValues);
+        ArrayList<String> entries = new ArrayList<String>(Arrays.asList(mSerialPortFinder.getAllDevices()));
+        ArrayList<String> entryValues = new ArrayList<String>(Arrays.asList(mSerialPortFinder.getAllDevicesPath()));
+        
+        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+        if (adapter != null) {
+        		for(BluetoothDevice device : adapter.getBondedDevices()) {
+        			entries.add(device.getName());
+        			entryValues.add(device.getAddress());
+        		}
+        }
+			
+		devices.setEntries((String[])entries.toArray(new String[0]));
+		devices.setEntryValues((String[])entryValues.toArray(new String[0]));
 		devices.setSummary(devices.getValue());
 		devices.setOnPreferenceChangeListener(new OnPreferenceChangeListener() {
 			public boolean onPreferenceChange(Preference preference, Object newValue) {

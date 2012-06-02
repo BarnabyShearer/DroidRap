@@ -28,9 +28,13 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -40,8 +44,9 @@ import android.view.MenuItem;
 import android_serialport_api.SerialPort;
 
 public abstract class SerialPortActivity extends Activity {
-
+	
 	protected SerialPort mSerialPort;
+	protected BluetoothSocket mBluetoothPort;
 	protected OutputStream mOutputStream;
 	private BufferedReader mInputBuffer; 
 	private ReadThread mReadThread;
@@ -102,19 +107,35 @@ public abstract class SerialPortActivity extends Activity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		try {
-			if (mSerialPort == null) {
+			if (mSerialPort == null && mBluetoothPort == null) {
 				SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(SerialPortActivity.this);
 				String path = sp.getString("DEVICE", "");
-				int baudrate = Integer.decode(sp.getString("BAUDRATE", "-1"));
+				if(path.contains("/")) {
+					int baudrate = Integer.decode(sp.getString("BAUDRATE", "-1"));
+					
+					if ( (path.length() == 0) || (baudrate == -1)) {
+						throw new InvalidParameterException();
+					}
 
-				if ( (path.length() == 0) || (baudrate == -1)) {
-					throw new InvalidParameterException();
+					mSerialPort = new SerialPort(new File(path), baudrate, 0);
+				} else {
+					final UUID SERIAL_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //magic UUID for serial connection
+					BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
+					if (adapter == null || !adapter.isEnabled()) {
+						throw new InvalidParameterException();
+					}
+					BluetoothDevice device = adapter.getRemoteDevice(path);
+					mBluetoothPort = device.createRfcommSocketToServiceRecord(SERIAL_UUID);
+					mBluetoothPort.connect();
 				}
-
-				mSerialPort = new SerialPort(new File(path), baudrate, 0);
 			}
-			mOutputStream = mSerialPort.getOutputStream();
-			mInputBuffer = new BufferedReader(new InputStreamReader(mSerialPort.getInputStream()));
+			if (mSerialPort != null) {
+				mOutputStream = mSerialPort.getOutputStream();
+				mInputBuffer = new BufferedReader(new InputStreamReader(mSerialPort.getInputStream()));
+			} else {
+				mOutputStream = mBluetoothPort.getOutputStream();
+				mInputBuffer = new BufferedReader(new InputStreamReader(mBluetoothPort.getInputStream()));
+			}
 			mReadThread = new ReadThread();
 			mReadThread.start();
 			
@@ -130,6 +151,9 @@ public abstract class SerialPortActivity extends Activity {
 			DisplayError(R.string.error_unknown);
 			//startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
 		} catch (InvalidParameterException e) {
+			DisplayError(R.string.error_configuration);
+			startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
+		} catch (IllegalArgumentException e) {
 			DisplayError(R.string.error_configuration);
 			startActivity(new Intent(SerialPortActivity.this, SerialPortPreferences.class));
 		}
@@ -160,7 +184,54 @@ public abstract class SerialPortActivity extends Activity {
 			mReadThread.interrupt();
 		if (mSerialPort != null)
 			mSerialPort.close();
+		if(mBluetoothPort != null)
+			try {
+				mBluetoothPort.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		mBluetoothPort = null;
 		mSerialPort = null;
 		super.onDestroy();
 	}
+	
+	protected interface BluetoothDevicePicker {
+	    public static final String EXTRA_NEED_AUTH =
+	            "android.bluetooth.devicepicker.extra.NEED_AUTH";
+	    public static final String EXTRA_FILTER_TYPE =
+	            "android.bluetooth.devicepicker.extra.FILTER_TYPE";
+	    public static final String EXTRA_LAUNCH_PACKAGE =
+	            "android.bluetooth.devicepicker.extra.LAUNCH_PACKAGE";
+	    public static final String EXTRA_LAUNCH_CLASS =
+	            "android.bluetooth.devicepicker.extra.DEVICE_PICKER_LAUNCH_CLASS";
+
+	    /**
+	     * Broadcast when one BT device is selected from BT device picker screen.
+	     * Selected BT device address is contained in extra string {@link BluetoothIntent}
+	     */
+	    public static final String ACTION_DEVICE_SELECTED =
+	            "android.bluetooth.devicepicker.action.DEVICE_SELECTED";
+
+	    /**
+	     * Broadcast when someone want to select one BT device from devices list.
+	     * This intent contains below extra data:
+	     * - {@link #EXTRA_NEED_AUTH} (boolean): if need authentication
+	     * - {@link #EXTRA_FILTER_TYPE} (int): what kinds of device should be
+	     *                                     listed
+	     * - {@link #EXTRA_LAUNCH_PACKAGE} (string): where(which package) this
+	     *                                           intent come from
+	     * - {@link #EXTRA_LAUNCH_CLASS} (string): where(which class) this intent
+	     *                                         come from
+	     */
+	    public static final String ACTION_LAUNCH =
+	            "android.bluetooth.devicepicker.action.LAUNCH";
+
+	    /** Ask device picker to show all kinds of BT devices */
+	    public static final int FILTER_TYPE_ALL = 0;
+	    /** Ask device picker to show BT devices that support AUDIO profiles */
+	    public static final int FILTER_TYPE_AUDIO = 1;
+	    /** Ask device picker to show BT devices that support Object Transfer */
+	    public static final int FILTER_TYPE_TRANSFER = 2;
+	}
+
 }

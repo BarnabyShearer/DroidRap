@@ -31,6 +31,7 @@ import android.content.Intent;
 import android.content.res.AssetManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
 import android.text.Layout;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
@@ -215,7 +216,7 @@ public class ManualActivity extends SerialPortActivity implements OnClickListene
 	        in = null;
 	        out.flush();
 	        out.close();
-	        new File(newFileName).setExecutable(true);
+	        //new File(newFileName).setExecutable(true);
 	        out = null;
 	    } catch (Exception e) {
 	        Log.e("tag", e.getMessage());
@@ -245,6 +246,13 @@ public class ManualActivity extends SerialPortActivity implements OnClickListene
 	    }
 
 	}
+	
+	private File getExternalFilesDir(String type) {
+		String packageName = getApplicationContext().getPackageName();
+		File externalPath = Environment.getExternalStorageDirectory();
+		return new File(externalPath.getAbsolutePath() +
+		                         "/Android/data/" + packageName + "/files");
+	}
 	private class SliceTask extends AsyncTask<String, String, Void> {
 		
 		@Override
@@ -262,7 +270,8 @@ public class ManualActivity extends SerialPortActivity implements OnClickListene
 					publishProgress("Configuring Slic3r...\n");
 					Process su = builder.start();
 					BufferedReader reader = new BufferedReader(new InputStreamReader(su.getInputStream()));
-					String cmd = "chroot /data/data/" + PACKAGE_NAME  + "/min /slic3r --save /Slic3r.cfg\n";
+					String cmd = "chmod -R 755 /data/data/" + PACKAGE_NAME  + "/min\n";
+					cmd += "chroot /data/data/" + PACKAGE_NAME  + "/min /slic3r --save /Slic3r.cfg\n";
 					cmd += "exit\n";
 					su.getOutputStream().write(cmd.getBytes());
 					char[] buffer = new char[64];
